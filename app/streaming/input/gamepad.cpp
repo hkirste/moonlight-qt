@@ -708,7 +708,44 @@ void SdlInputHandler::handleControllerDeviceEvent(SDL_ControllerDeviceEvent* eve
 #endif
             type == LI_CTYPE_PS;
 
-        LiSendControllerArrivalEvent(state->index, m_GamepadMask, type, supportedButtonFlags, capabilities);
+        // Read firmware info from DualSense controllers for passthrough to the host
+        uint8_t metadataBuf[4 + 64] = {}; // TLV header + firmware report
+        uint16_t metadataLen = 0;
+
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+        if (SDL_GameControllerGetType(state->controller) == SDL_CONTROLLER_TYPE_PS5) {
+            SDL_Joystick *joy = SDL_GameControllerGetJoystick(state->controller);
+            Uint16 vid = SDL_JoystickGetVendor(joy);
+            Uint16 pid = SDL_JoystickGetProduct(joy);
+            const char *serial = SDL_JoystickGetSerial(joy);
+            wchar_t wserial[64] = {};
+
+            if (serial) {
+                mbstowcs(wserial, serial, sizeof(wserial) / sizeof(wserial[0]) - 1);
+            }
+
+            SDL_hid_device *hid = SDL_hid_open(vid, pid, serial ? wserial : NULL);
+            if (hid) {
+                unsigned char report[65] = {};
+                report[0] = 0x20;
+                int len = SDL_hid_get_feature_report(hid, report, sizeof(report));
+                if (len >= 64) {
+                    // Build TLV: tag(1) + reserved(1) + length(2 LE) + value(64)
+                    metadataBuf[0] = LI_CTRL_META_TAG_FIRMWARE_INFO;
+                    metadataBuf[1] = 0;
+                    metadataBuf[2] = 64;  // length low byte
+                    metadataBuf[3] = 0;   // length high byte
+                    memcpy(metadataBuf + 4, report, 64);
+                    metadataLen = 4 + 64;
+                    capabilities |= LI_CCAP_FIRMWARE_INFO;
+                }
+                SDL_hid_close(hid);
+            }
+        }
+#endif
+
+        LiSendControllerArrivalEventWithMetadata(state->index, m_GamepadMask, type,
+            supportedButtonFlags, capabilities, metadataLen > 0 ? metadataBuf : NULL, metadataLen);
 #else
 
         // Send an empty event to tell the PC we've arrived
