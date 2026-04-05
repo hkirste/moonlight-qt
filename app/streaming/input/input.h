@@ -127,6 +127,8 @@ public:
     void setControllerLED(uint16_t controllerNumber, uint8_t r, uint8_t g, uint8_t b);
 
     void setAdaptiveTriggers(uint16_t controllerNumber, DualSenseOutputReport *report);
+    void setPlayerLed(uint16_t controllerNumber, uint8_t ledValue);
+    void setMicLed(uint16_t controllerNumber, uint8_t ledState);
 
     void handleTouchFingerEvent(SDL_TouchFingerEvent* event);
 

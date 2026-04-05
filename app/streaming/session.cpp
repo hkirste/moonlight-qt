@@ -28,6 +28,8 @@
 #define SDL_CODE_GAMECONTROLLER_SET_MOTION_EVENT_STATE 103
 #define SDL_CODE_GAMECONTROLLER_SET_CONTROLLER_LED 104
 #define SDL_CODE_GAMECONTROLLER_SET_ADAPTIVE_TRIGGERS 105
+#define SDL_CODE_GAMECONTROLLER_SET_PLAYER_LED 106
+#define SDL_CODE_GAMECONTROLLER_SET_MIC_LED 107
 
 #include <openssl/rand.h>
 
@@ -60,7 +62,9 @@ CONNECTION_LISTENER_CALLBACKS Session::k_ConnCallbacks = {
     Session::clRumbleTriggers,
     Session::clSetMotionEventState,
     Session::clSetControllerLED,
-    Session::clSetAdaptiveTriggers
+    Session::clSetAdaptiveTriggers,
+    Session::clSetPlayerLed,
+    Session::clSetMicLed
 };
 
 Session* Session::s_ActiveSession;
@@ -274,6 +278,23 @@ void Session::clSetAdaptiveTriggers(uint16_t controllerNumber, uint8_t eventFlag
     SDL_PushEvent(&setControllerLEDEvent);
 }
 
+void Session::clSetPlayerLed(uint16_t controllerNumber, uint8_t ledValue) {
+    SDL_Event event = {};
+    event.type = SDL_USEREVENT;
+    event.user.code = SDL_CODE_GAMECONTROLLER_SET_PLAYER_LED;
+    event.user.data1 = (void*)(uintptr_t)controllerNumber;
+    event.user.data2 = (void*)(uintptr_t)ledValue;
+    SDL_PushEvent(&event);
+}
+
+void Session::clSetMicLed(uint16_t controllerNumber, uint8_t ledState) {
+    SDL_Event event = {};
+    event.type = SDL_USEREVENT;
+    event.user.code = SDL_CODE_GAMECONTROLLER_SET_MIC_LED;
+    event.user.data1 = (void*)(uintptr_t)controllerNumber;
+    event.user.data2 = (void*)(uintptr_t)ledState;
+    SDL_PushEvent(&event);
+}
 
 bool Session::chooseDecoder(StreamingPreferences::VideoDecoderSelection vds,
                             SDL_Window* window, int videoFormat, int width, int height,
@@ -2020,6 +2041,14 @@ void Session::exec()
             case SDL_CODE_GAMECONTROLLER_SET_ADAPTIVE_TRIGGERS:
                 m_InputHandler->setAdaptiveTriggers((uint16_t)(uintptr_t)event.user.data1,
                                                     (DualSenseOutputReport *)event.user.data2);
+                break;
+            case SDL_CODE_GAMECONTROLLER_SET_PLAYER_LED:
+                m_InputHandler->setPlayerLed((uint16_t)(uintptr_t)event.user.data1,
+                                             (uint8_t)(uintptr_t)event.user.data2);
+                break;
+            case SDL_CODE_GAMECONTROLLER_SET_MIC_LED:
+                m_InputHandler->setMicLed((uint16_t)(uintptr_t)event.user.data1,
+                                          (uint8_t)(uintptr_t)event.user.data2);
                 break;
             default:
                 SDL_assert(false);

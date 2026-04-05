@@ -963,6 +963,32 @@ void SdlInputHandler::setAdaptiveTriggers(uint16_t controllerNumber, DualSenseOu
     SDL_free(report);
 }
 
+void SdlInputHandler::setPlayerLed(uint16_t controllerNumber, uint8_t ledValue) {
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+    if (controllerNumber <= MAX_GAMEPADS &&
+        m_GamepadState[controllerNumber].controller != nullptr &&
+        SDL_GameControllerGetType(m_GamepadState[controllerNumber].controller) == SDL_CONTROLLER_TYPE_PS5) {
+        DualSenseOutputReport report = {};
+        report.validFlag1 = 0x10; // PlayerIndicatorValid
+        report.playerLeds = ledValue;
+        SDL_GameControllerSendEffect(m_GamepadState[controllerNumber].controller, &report, sizeof(report));
+    }
+#endif
+}
+
+void SdlInputHandler::setMicLed(uint16_t controllerNumber, uint8_t ledState) {
+#if SDL_VERSION_ATLEAST(2, 0, 16)
+    if (controllerNumber <= MAX_GAMEPADS &&
+        m_GamepadState[controllerNumber].controller != nullptr &&
+        SDL_GameControllerGetType(m_GamepadState[controllerNumber].controller) == SDL_CONTROLLER_TYPE_PS5) {
+        DualSenseOutputReport report = {};
+        report.validFlag1 = 0x01; // MicMuteLedValid
+        report.muteButtonLed = ledState;
+        SDL_GameControllerSendEffect(m_GamepadState[controllerNumber].controller, &report, sizeof(report));
+    }
+#endif
+}
+
 QString SdlInputHandler::getUnmappedGamepads()
 {
     QString ret;
